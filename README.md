@@ -12,6 +12,7 @@ This project is a two-player online chess-like game with custom rules. The game 
 7. [File Structure](#file-structure)
 8. [Known Issues](#known-issues)
 9. [Future Improvements](#future-improvements)
+10. [Screenshot](#screenshot)
 
 ## Project Description
 
@@ -124,3 +125,7 @@ P-Revant-Kumar-21BCE0310/
 - **AI Opponent**: Implement a basic AI opponent for single-player mode.
 - **Mobile Support**: Optimize the game for mobile devices to allow for better accessibility.
 - **Game Replay**: Add functionality to replay the game after it ends, without restarting the server.
+
+## Screenshot
+![image](https://github.com/user-attachments/assets/45e734aa-b834-4b98-99b2-2228b3fe0587)
+
