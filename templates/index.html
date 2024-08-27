@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess-like Game</title>
+    <script src="https://cdn.socket.io/3.1.3/socket.io.min.js" integrity="sha384-cPwlPLvBTa3sKAgddT6krw0cJat7egBga3DJepJyrLl4Q9/5WLra3rrnMcyTyOnh" crossorigin="anonymous"></script>
+    <style>
+        /* Simple styling for the board */
+        body{
+            background-color: black;
+        }
+
+        h1{
+            display: flex;
+            justify-content: center;
+            color: aliceblue;
+        }
+
+        #board {
+            display: grid;
+            grid-template-columns: repeat(5, 50px);
+            grid-template-rows: repeat(5, 50px);
+            gap: 5px;
+            justify-content: center;
+
+        }
+
+        .cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 50px;
+            height: 50px;
+            border: 1px solid rgb(255, 255, 255);
+            background-color: black;
+            color: white;
+            cursor: pointer;
+        }
+
+        .active {
+            background-color: lightblue;
+        }
+
+        #move-options {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        button {
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Player: &nbsp<span id="current-player">A</span></h1>
+    <div id="board"></div>
+    <div id="move-options"></div>
+
+    <script>
+        const socket = io();
+        let selectedPiece = null;
+        let currentPlayer = 'A';  // This will be updated by the server
+
+        // Function to render the board on the webpage
+        function renderBoard(grid) {
+            console.log("Rendering board with grid data:", grid);  // Debug log
+            const boardDiv = document.getElementById('board');
+            boardDiv.innerHTML = '';  // Clear the previous board
+        
+            grid.forEach((row, rowIndex) => {
+                row.forEach((cell, colIndex) => {
+                    const cellDiv = document.createElement('div');
+                    cellDiv.classList.add('cell');
+                    cellDiv.setAttribute('data-row', rowIndex);
+                    cellDiv.setAttribute('data-col', colIndex);
+        
+                    if (cell) {
+                        cellDiv.innerHTML = cell;
+                        cellDiv.addEventListener('click', () => {
+                            selectPiece(cell, rowIndex, colIndex);
+                        });
+                    }
+        
+                    boardDiv.appendChild(cellDiv);
+                });
+            });
+        }
+        
+
+        // Function to handle piece selection
+        function selectPiece(piece, row, col) {
+            // Only allow the current player to select their pieces
+            if (piece.startsWith(currentPlayer)) {
+                selectedPiece = { piece, row, col };
+
+                // Highlight the selected piece
+                document.querySelectorAll('.cell').forEach(cell => {
+                    cell.classList.remove('active');
+                });
+                const selectedCell = document.querySelector(`[data-row='${row}'][data-col='${col}']`);
+                selectedCell.classList.add('active');
+
+                // Show possible moves based on the piece type
+                showMoveOptions(piece);
+            } else {
+                alert("It's not your turn!");
+            }
+        }
+
+        // Function to display possible moves for the selected piece
+        function showMoveOptions(piece) {
+            const moveOptionsDiv = document.getElementById('move-options');
+            moveOptionsDiv.innerHTML = '';  // Clear previous move options
+
+            let moves = [];
+
+            if (piece.includes('P')) {
+                // Pawn: L (Left), R (Right), F (Forward), B (Backward)
+                moves = ['L', 'R', 'F', 'B'];
+            } else if (piece.includes('H1')) {
+                // Hero1: L (Left), R (Right), F (Forward), B (Backward) (2 blocks)
+                moves = ['L', 'R', 'F', 'B'];
+            } else if (piece.includes('H2')) {
+                // Hero2: FL (Forward-Left), FR (Forward-Right), BL (Backward-Left), BR (Backward-Right)
+                moves = ['FL', 'FR', 'BL', 'BR'];
+            }
+
+            // Create buttons for each move option
+            moves.forEach(move => {
+                const moveButton = document.createElement('button');
+                moveButton.innerHTML = move;
+                moveButton.addEventListener('click', () => {
+                    makeMove(move);
+                });
+                moveOptionsDiv.appendChild(moveButton);
+            });
+        }
+
+        // Function to make the selected move
+        function makeMove(move) {
+            if (selectedPiece) {
+                const { piece, row, col } = selectedPiece;
+                console.log("Emitting move event:", { player: currentPlayer, character: piece, direction: move });
+        
+                // Send the move to the backend via WebSocket
+                socket.emit('move', {
+                    player: currentPlayer,
+                    character: piece,
+                    direction: move
+                });
+        
+                // Clear the move options
+                document.getElementById('move-options').innerHTML = '';
+            }
+        }
+        
+
+        // Initial fetch of the board state
+        fetch('/board')
+            .then(response => response.json())
+            .then(grid => {
+                renderBoard(grid);
+            });
+
+
+        <!-- ------------------------------------------------------------------------- -->
+        socket.on('player_assigned', function(data) {
+            currentPlayer = data.player;
+            document.getElementById('current-player').textContent = currentPlayer;
+        });
+
+        socket.emit('test_event');
+
+        
+        socket.on('update', function(data) {
+            console.log("Received update event:", data);  // This is being logged
+            console.log("Grid data received:", data.grid);  // Log grid data
+            renderBoard(data.grid);  // Call the render function with the grid
+            currentPlayer = data.current_player;
+            document.getElementById('current-player').textContent = currentPlayer;
+        });
+
+        
+        socket.on('game_over', function(data) {
+            alert(`Game Over! Player ${data.winner} wins!`);
+        });
+
+
+    </script>
+</body>
+</html>
